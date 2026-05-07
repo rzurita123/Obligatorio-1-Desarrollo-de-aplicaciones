@@ -5,6 +5,7 @@ require("./models");
 const express = require("express");
 const morgan = require("morgan");
 
+const ensureMongoConnected = require("./middlewares/mongo-connect.middleware");
 const corsMiddleware = require("./middlewares/cors.middleware");
 const jsonMiddleware = require("./middlewares/json.middleware");
 const sanitizeMiddleware = require("./middlewares/sanitize.middleware");
@@ -15,6 +16,8 @@ const { mountRoutes } = require("./routes/index");
 const app = express();
 
 app.disable("x-powered-by");
+
+app.use(ensureMongoConnected);
 
 app.use(jsonMiddleware);
 app.use(sanitizeMiddleware);
