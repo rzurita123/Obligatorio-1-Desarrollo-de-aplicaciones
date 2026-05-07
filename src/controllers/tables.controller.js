@@ -88,6 +88,7 @@ async function postTableSplit(req, res, next) {
       totalAmount: summary.totalAmount,
       participants: participants.map((p) => ({
         participantId: p.participantId,
+        name: p.name,
         suggestedAmount: Number((summary.totalAmount / participants.length).toFixed(2)),
       })),
     };
