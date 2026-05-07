@@ -1,0 +1,25 @@
+{
+  "name": "mesapay-api",
+  "version": "0.1.0",
+  "description": "MesaPay — API backend - 217209",
+  "main": "api/dev.js",
+  "scripts": {
+    "dev": "nodemon api/dev.js",
+    "start": "node api/dev.js"
+  },
+  "keywords": ["express", "mongodb", "mesapay"],
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "joi": "^17.13.3",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.13.2",
+    "morgan": "^1.10.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  }
+}
