@@ -9,6 +9,7 @@ const {
 } = require("../middlewares/participant.middleware");
 const {
   postTable,
+  getTablesList,
   getTableByQr,
   postJoinTable,
   getTableItems,
@@ -20,6 +21,7 @@ const {
 } = require("../controllers/tables.controller");
 const {
   createTableSchema,
+  listTablesQuerySchema,
   tableIdParamSchema,
   qrCodeParamSchema,
   joinTableSchema,
@@ -38,6 +40,7 @@ const participantForTable = [
 ];
 
 // Orden: rutas fijas antes de /:id...
+router.get("/", queryMiddleware(listTablesQuerySchema), getTablesList);
 router.post("/", payloadMiddleware(createTableSchema), postTable);
 router.get("/qr/:qrCode", paramsMiddleware(qrCodeParamSchema), getTableByQr);
 

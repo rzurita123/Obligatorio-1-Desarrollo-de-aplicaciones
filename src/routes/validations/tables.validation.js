@@ -3,7 +3,15 @@ const Joi = require("joi");
 const objectIdSchema = Joi.string().trim().length(24).hex();
 
 const createTableSchema = Joi.object({
+  label: Joi.string().trim().min(1).max(80).required(),
+});
+
+const listTablesQuerySchema = Joi.object({
+  id: objectIdSchema.optional(),
+  qrCode: Joi.string().trim().min(3).max(120).optional(),
   label: Joi.string().trim().min(1).max(80).optional(),
+  page: Joi.number().integer().min(1).default(1),
+  limit: Joi.number().integer().min(1).max(100).default(50),
 });
 
 const tableIdParamSchema = Joi.object({
@@ -39,6 +47,7 @@ const listPaymentsQuerySchema = Joi.object({
 
 module.exports = {
   createTableSchema,
+  listTablesQuerySchema,
   tableIdParamSchema,
   qrCodeParamSchema,
   joinTableSchema,

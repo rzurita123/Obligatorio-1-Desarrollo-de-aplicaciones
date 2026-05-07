@@ -1,5 +1,6 @@
 const {
   createTable,
+  listTables,
   getTableByQrCode,
   joinTable,
   getSummary,
@@ -15,6 +16,15 @@ async function postTable(req, res, next) {
   try {
     const table = await createTable(req.body || {});
     return sendSuccess(res, 201, table);
+  } catch (err) {
+    return next(err);
+  }
+}
+
+async function getTablesList(req, res, next) {
+  try {
+    const result = await listTables(req.query);
+    return sendSuccess(res, 200, { tables: result.data }, { pagination: result.pagination });
   } catch (err) {
     return next(err);
   }
@@ -121,6 +131,7 @@ async function postCloseTable(req, res, next) {
 
 module.exports = {
   postTable,
+  getTablesList,
   getTableByQr,
   postJoinTable,
   getTableItems,

@@ -3,7 +3,6 @@ const authRouter = require("./auth.router");
 const tablesRouter = require("./tables.router");
 const itemsRouter = require("./items.router");
 const paymentsRouter = require("./payments.router");
-const usersRouter = require("./users.router");
 const { sendSuccess } = require("../utils/response.util");
 
 function mountRoutes(app) {
@@ -18,7 +17,6 @@ function mountRoutes(app) {
   app.use("/tables", tablesRouter);
   app.use("/items", itemsRouter);
   app.use("/payments", paymentsRouter);
-  app.use("/users", usersRouter);
 }
 
 module.exports = { mountRoutes };

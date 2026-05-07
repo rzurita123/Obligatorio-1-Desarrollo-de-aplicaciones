@@ -73,17 +73,69 @@ async function ensureTable(tableId) {
 }
 
 async function createTable({ label }) {
-  const table = await Table.create({
-    label: label ? String(label).trim() : undefined,
-    qrCode: randomQrCode(),
-    status: "OPEN",
-  });
+  const trimmed = String(label).trim();
+  try {
+    const table = await Table.create({
+      label: trimmed,
+      qrCode: randomQrCode(),
+      status: "OPEN",
+    });
+
+    return {
+      id: table._id.toString(),
+      qrCode: table.qrCode,
+      label: table.label,
+      status: table.status,
+    };
+  } catch (err) {
+    if (err.code === 11000) {
+      throw appError("Ya existe una mesa con ese label", 409, "DUPLICATE_LABEL");
+    }
+    throw err;
+  }
+}
+
+async function listTables(query = {}) {
+  const page = Number(query.page || 1);
+  const limit = Number(query.limit || 50);
+  const skip = (page - 1) * limit;
+
+  const filter = {};
+  if (query.id) {
+    if (!isValidObjectId(query.id)) {
+      throw appError("id inválido", 400, "VALIDATION");
+    }
+    filter._id = query.id;
+  }
+  if (query.qrCode) {
+    filter.qrCode = String(query.qrCode).trim();
+  }
+  if (query.label) {
+    filter.label = String(query.label).trim();
+  }
+
+  const [tables, total] = await Promise.all([
+    Table.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+    Table.countDocuments(filter),
+  ]);
+
+  const data = tables.map((t) => ({
+    id: t._id.toString(),
+    qrCode: t.qrCode,
+    label: t.label,
+    status: t.status,
+    createdAt: t.createdAt,
+    updatedAt: t.updatedAt,
+  }));
 
   return {
-    id: table._id.toString(),
-    qrCode: table.qrCode,
-    label: table.label || null,
-    status: table.status,
+    data,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit) || 1,
+    },
   };
 }
 
@@ -95,7 +147,7 @@ async function getTableByQrCode(qrCode) {
   return {
     id: table._id.toString(),
     qrCode: table.qrCode,
-    label: table.label || null,
+    label: table.label,
     status: table.status,
   };
 }
@@ -194,6 +246,7 @@ async function closeTable(tableId) {
 module.exports = {
   ensureTable,
   createTable,
+  listTables,
   getTableByQrCode,
   joinTable,
   getSummary,

@@ -12,7 +12,7 @@ const tableSchema = new mongoose.Schema(
       trim: true,
       index: true,
     },
-    label: { type: String, trim: true },
+    label: { type: String, required: true, trim: true, unique: true },
     status: {
       type: String,
       enum: ["OPEN", "CLOSED"],
