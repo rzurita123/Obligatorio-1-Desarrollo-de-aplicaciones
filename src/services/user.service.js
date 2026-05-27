@@ -1,5 +1,6 @@
 const bcrypt = require("bcryptjs");
 const User = require("../models/user.model");
+const { USER_ROLES } = require("../constants/user-role.constant");
 
 async function findUserByUsername(username) {
   return User.findOne({ username: username.trim() });
@@ -13,6 +14,7 @@ async function createUser({ name, username, email, password }) {
     email: email && String(email).trim() ? String(email).trim() : undefined,
     password: hashed,
     active: true,
+    role: USER_ROLES.CUSTOMER,
   });
   await doc.save();
   return doc;

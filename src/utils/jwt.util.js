@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const config = require("../config");
+const { USER_ROLES } = require("../constants/user-role.constant");
 
 function getSecret() {
   const s = config.auth.secret;
@@ -13,11 +14,13 @@ function getSecret() {
 
 function signUserToken(userDoc) {
   const id = userDoc._id.toString();
+  const role = userDoc.role || USER_ROLES.CUSTOMER;
   return jwt.sign(
     {
       sub: id,
       type: "user",
       username: userDoc.username,
+      role,
     },
     getSecret(),
     { expiresIn: "8h" }

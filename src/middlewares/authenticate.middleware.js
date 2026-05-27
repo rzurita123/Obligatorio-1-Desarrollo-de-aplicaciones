@@ -1,9 +1,11 @@
 const { verifyTokenString } = require("../utils/jwt.util");
 const config = require("../config");
+const { USER_ROLES } = require("../constants/user-role.constant");
 
 /**
  * Lee `Authorization: <token>` o `Authorization: Bearer <token>` (común en clientes).
  * Carga `req.auth` con tipo user | participant y claims del JWT.
+ * Usuarios incluyen `role` (customer | employee | admin); participantes no.
  */
 function extractBearer(req) {
   const raw = req.headers.authorization || req.headers.Authorization;
@@ -39,6 +41,7 @@ function authenticate(req, res, next) {
       type: payload.type,
       sub: payload.sub,
       username: payload.username || null,
+      role: payload.type === "user" ? payload.role || USER_ROLES.CUSTOMER : null,
       tableId: payload.tableId || null,
       participantId: payload.participantId || null,
       userId:
@@ -56,5 +59,7 @@ function authenticate(req, res, next) {
     return next(err);
   }
 }
+
+authenticate.extractBearer = extractBearer;
 
 module.exports = authenticate;

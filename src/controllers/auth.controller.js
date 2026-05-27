@@ -1,6 +1,7 @@
 const { signUserToken } = require("../utils/jwt.util");
 const { appError } = require("../utils/app-error.util");
 const { sendSuccess } = require("../utils/response.util");
+const { USER_ROLES } = require("../constants/user-role.constant");
 const {
   findUserByUsername,
   createUser,
@@ -21,6 +22,7 @@ const postAuthSignup = async (req, res, next) => {
       return sendSuccess(res, 201, {
         message: "Usuario registrado correctamente",
         id: user._id.toString(),
+        role: user.role || USER_ROLES.CUSTOMER,
       });
     } catch (err) {
       if (err.code === 11000) {
@@ -52,9 +54,11 @@ const postAuthLogin = async (req, res, next) => {
     }
 
     const token = signUserToken(user);
+    const role = user.role || USER_ROLES.CUSTOMER;
     return sendSuccess(res, 200, {
       token,
       tokenType: "user",
+      role,
       expiresIn: "8h",
     });
   } catch (err) {

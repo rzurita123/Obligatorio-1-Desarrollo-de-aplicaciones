@@ -1,6 +1,6 @@
 const { Item, Participant } = require("../models");
 const { appError } = require("../utils/app-error.util");
-const { ensureTable } = require("./table.service");
+const { ensureTable, ensureTableInBusiness } = require("./table.service");
 
 async function createItem({ tableId, title, quantity, amount }) {
   const table = await ensureTable(tableId);
@@ -73,6 +73,59 @@ async function assignItem({ itemId, participantTableId, assignments }) {
   };
 }
 
+function splitAmountsEven(total, count) {
+  const cents = Math.round(Number(total) * 100);
+  const base = Math.floor(cents / count);
+  let rem = cents - base * count;
+  const parts = new Array(count).fill(base);
+  for (let i = 0; i < count && rem > 0; i++) {
+    parts[i] += 1;
+    rem -= 1;
+  }
+  return parts.map((c) => Number((c / 100).toFixed(2)));
+}
+
+async function splitItemEvenAmong({ tableId, itemId, participantIds }) {
+  await ensureTable(tableId);
+  const item = await Item.findById(itemId);
+  if (!item) {
+    throw appError("Ítem no encontrado", 404, "NOT_FOUND");
+  }
+  if (String(item.tableId) !== String(tableId)) {
+    throw appError("El ítem no pertenece a esta mesa", 403, "FORBIDDEN");
+  }
+
+  const table = await ensureTable(item.tableId.toString());
+  if (table.status === "CLOSED") {
+    throw appError("No se puede asignar en una mesa cerrada", 409, "TABLE_CLOSED");
+  }
+
+  const uniqueIds = [...new Set(participantIds.map((id) => String(id)))];
+  if (uniqueIds.length === 0) {
+    throw appError("participantIds requerido", 400, "VALIDATION");
+  }
+
+  const participants = await Participant.find({
+    _id: { $in: uniqueIds },
+    tableId: item.tableId,
+  });
+  if (participants.length !== uniqueIds.length) {
+    throw appError("Hay participantes inexistentes o fuera de la mesa", 400, "VALIDATION");
+  }
+
+  const amounts = splitAmountsEven(item.amount, uniqueIds.length);
+  const assignments = uniqueIds.map((pid, i) => ({
+    participantId: pid,
+    amount: amounts[i],
+  }));
+
+  return assignItem({
+    itemId,
+    participantTableId: tableId,
+    assignments,
+  });
+}
+
 async function listItemsByTable(tableId, query = {}) {
   await ensureTable(tableId);
 
@@ -121,5 +174,6 @@ async function listItemsByTable(tableId, query = {}) {
 module.exports = {
   createItem,
   assignItem,
+  splitItemEvenAmong,
   listItemsByTable,
 };
