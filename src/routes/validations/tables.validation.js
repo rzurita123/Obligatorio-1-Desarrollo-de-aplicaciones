@@ -1,4 +1,5 @@
 const Joi = require("joi");
+const { SPLIT_TYPE_VALUES } = require("../../constants/split-type.constant");
 
 const objectIdSchema = Joi.string().trim().length(24).hex();
 
@@ -39,7 +40,30 @@ const joinTableSchema = Joi.object({
 });
 
 const splitTableSchema = Joi.object({
-  type: Joi.string().valid("equal", "byItems").required(),
+  type: Joi.string()
+    .valid(...SPLIT_TYPE_VALUES)
+    .required(),
+  shares: Joi.array()
+    .items(
+      Joi.object({
+        participantId: objectIdSchema.required(),
+        percent: Joi.number().min(0).max(100).required(),
+      })
+    )
+    .optional(),
+  amounts: Joi.array()
+    .items(
+      Joi.object({
+        participantId: objectIdSchema.required(),
+        amount: Joi.number().min(0).required(),
+      })
+    )
+    .optional(),
+});
+
+const participantIdParamSchema = Joi.object({
+  id: objectIdSchema.required(),
+  participantId: objectIdSchema.required(),
 });
 
 const tableItemParamsSchema = Joi.object({
@@ -53,6 +77,10 @@ const tableQrQuerySchema = Joi.object({
 
 const splitItemEvenBodySchema = Joi.object({
   participantIds: Joi.array().items(objectIdSchema).min(1).required(),
+});
+
+const patchTableStatusSchema = Joi.object({
+  status: Joi.string().valid("CLOSED").required(),
 });
 
 const listItemsQuerySchema = Joi.object({
@@ -82,6 +110,8 @@ module.exports = {
   joinTableSchema,
   splitTableSchema,
   splitItemEvenBodySchema,
+  patchTableStatusSchema,
   listItemsQuerySchema,
   listPaymentsQuerySchema,
+  participantIdParamSchema,
 };

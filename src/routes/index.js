@@ -1,6 +1,7 @@
 //Rutas de la API, autenticacion, tablas, items, pagos, usuarios.
 const authRouter = require("./auth.router");
 const adminBusinessesRouter = require("./admin-businesses.router");
+const adminUsersRouter = require("./admin-users.router");
 const businessesRouter = require("./businesses.router");
 const tablesRouter = require("./tables.router");
 const itemsRouter = require("./items.router");
@@ -17,6 +18,7 @@ function mountRoutes(app) {
   });
   app.use("/auth", authRouter);
   app.use("/admin/businesses", adminBusinessesRouter);
+  app.use("/admin/users", adminUsersRouter);
   app.use("/businesses", businessesRouter);
   app.use("/tables", tablesRouter);
   app.use("/items", itemsRouter);

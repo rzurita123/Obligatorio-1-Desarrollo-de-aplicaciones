@@ -1,12 +1,11 @@
 const { Item, Participant } = require("../models");
 const { appError } = require("../utils/app-error.util");
-const { ensureTable, ensureTableInBusiness } = require("./table.service");
+const { ensureTable, ensureTableOpen, ensureSplitNotApplied } = require("./table.service");
 
 async function createItem({ tableId, title, quantity, amount }) {
   const table = await ensureTable(tableId);
-  if (table.status === "CLOSED") {
-    throw appError("No se pueden agregar ítems a una mesa cerrada", 409, "TABLE_CLOSED");
-  }
+  await ensureTableOpen(table);
+  ensureSplitNotApplied(table);
 
   const item = await Item.create({
     tableId: table._id,
@@ -36,9 +35,8 @@ async function assignItem({ itemId, participantTableId, assignments }) {
   }
 
   const table = await ensureTable(item.tableId.toString());
-  if (table.status === "CLOSED") {
-    throw appError("No se puede asignar en una mesa cerrada", 409, "TABLE_CLOSED");
-  }
+  await ensureTableOpen(table);
+  ensureSplitNotApplied(table);
 
   const participantIds = assignments.map((a) => a.participantId);
   const participants = await Participant.find({
@@ -96,9 +94,8 @@ async function splitItemEvenAmong({ tableId, itemId, participantIds }) {
   }
 
   const table = await ensureTable(item.tableId.toString());
-  if (table.status === "CLOSED") {
-    throw appError("No se puede asignar en una mesa cerrada", 409, "TABLE_CLOSED");
-  }
+  await ensureTableOpen(table);
+  ensureSplitNotApplied(table);
 
   const uniqueIds = [...new Set(participantIds.map((id) => String(id)))];
   if (uniqueIds.length === 0) {

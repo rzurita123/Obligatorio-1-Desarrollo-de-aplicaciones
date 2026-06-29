@@ -3,7 +3,6 @@ const {
   listBusinessesAdmin,
   getBusinessById,
   updateBusiness,
-  deactivateBusiness,
   assignStaffToBusiness,
   removeStaffFromBusiness,
 } = require("../services/business.service");
@@ -45,15 +44,6 @@ async function patchAdminBusiness(req, res, next) {
   }
 }
 
-async function deleteAdminBusiness(req, res, next) {
-  try {
-    const business = await deactivateBusiness(req.params.businessId);
-    return sendSuccess(res, 200, { business });
-  } catch (err) {
-    next(err);
-  }
-}
-
 async function postAdminBusinessStaff(req, res, next) {
   try {
     const result = await assignStaffToBusiness({
@@ -83,7 +73,6 @@ module.exports = {
   getAdminBusinesses,
   getAdminBusinessById,
   patchAdminBusiness,
-  deleteAdminBusiness,
   postAdminBusinessStaff,
   deleteAdminBusinessStaff,
 };

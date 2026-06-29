@@ -25,8 +25,11 @@ const assignItemSchema = Joi.object({
     .required(),
 });
 
+const patchItemSchema = assignItemSchema;
+
 module.exports = {
   createItemSchema,
   itemIdParamSchema,
   assignItemSchema,
+  patchItemSchema,
 };

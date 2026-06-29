@@ -28,7 +28,7 @@ function signUserToken(userDoc) {
 }
 
 
-//Participante de mesa (emitido tras POST /tables/:id/join cuando exista la implementación).
+//Participante de mesa (emitido tras POST /tables/:id/participants).
  
 function signParticipantToken({ participant, tableId }) {
   const pid = participant._id.toString();

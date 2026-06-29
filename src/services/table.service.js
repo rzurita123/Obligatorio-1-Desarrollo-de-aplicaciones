@@ -2,7 +2,10 @@ const mongoose = require("mongoose");
 const { Table, Participant, Item, Payment } = require("../models");
 const { signParticipantToken } = require("../utils/jwt.util");
 const { appError } = require("../utils/app-error.util");
-const { computeTipAmount } = require("./split.service");
+const { computeSplitAmounts } = require("./split.service");
+const { computeParticipantBalances, buildSummaryTotals } = require("./participant-balance.service");
+const { ensureBusinessActive } = require("./business.service");
+const { SPLIT_TYPES } = require("../constants/split-type.constant");
 
 function isValidObjectId(id) {
   return mongoose.Types.ObjectId.isValid(id);
@@ -19,54 +22,20 @@ function tableTipPayload(table) {
   };
 }
 
+function tableSplitPayload(table) {
+  return {
+    splitType: table.splitType || null,
+    splitConfig: table.splitConfig || null,
+    splitAppliedAt: table.splitAppliedAt || null,
+  };
+}
+
 function pickParticipantName(p) {
   return {
     participantId: p._id.toString(),
     userId: p.userId ? p.userId.toString() : null,
     name: p.name,
   };
-}
-
-function buildParticipantStats(participants, items, payments) {
-  const stats = new Map();
-
-  for (const p of participants) {
-    stats.set(p._id.toString(), {
-      participantId: p._id.toString(),
-      userId: p.userId ? p.userId.toString() : null,
-      name: p.name,
-      debt: 0,
-      paid: 0,
-      items: [],
-    });
-  }
-
-  for (const item of items) {
-    for (const line of item.assignments || []) {
-      const participantKey = line.participantId.toString();
-      const st = stats.get(participantKey);
-      if (!st) continue;
-      st.debt += Number(line.amount) || 0;
-      st.items.push({
-        itemId: item._id.toString(),
-        title: item.title,
-        amount: Number(line.amount) || 0,
-      });
-    }
-  }
-
-  for (const payment of payments) {
-    const participantKey = payment.participantId.toString();
-    const st = stats.get(participantKey);
-    if (!st) continue;
-    st.paid += Number(payment.amount) || 0;
-  }
-
-  return Array.from(stats.values()).map((p) => ({
-    ...p,
-    debt: Number(p.debt.toFixed(2)),
-    paid: Number(p.paid.toFixed(2)),
-  }));
 }
 
 async function ensureTable(tableId) {
@@ -80,6 +49,12 @@ async function ensureTable(tableId) {
   return table;
 }
 
+async function ensureTableOpen(table) {
+  if (table.status === "CLOSED") {
+    throw appError("La mesa ya está cerrada", 409, "TABLE_CLOSED");
+  }
+}
+
 async function ensureTableInBusiness(businessId, tableId) {
   const table = await ensureTable(tableId);
   if (String(table.businessId) !== String(businessId)) {
@@ -88,7 +63,24 @@ async function ensureTableInBusiness(businessId, tableId) {
   return table;
 }
 
+function ensureSplitNotApplied(table) {
+  if (table.splitType && table.splitAppliedAt) {
+    throw appError("Ya se aplicó un split en esta mesa", 409, "SPLIT_APPLIED");
+  }
+}
+
+async function loadTableContext(tableId) {
+  const table = await ensureTable(tableId);
+  const [participants, items, payments] = await Promise.all([
+    Participant.find({ tableId: table._id }),
+    Item.find({ tableId: table._id }).sort({ createdAt: 1 }),
+    Payment.find({ tableId: table._id }).sort({ createdAt: 1 }),
+  ]);
+  return { table, participants, items, payments };
+}
+
 async function createTable({ businessId, label }) {
+  await ensureBusinessActive(businessId);
   const trimmed = String(label).trim();
   try {
     const table = await Table.create({
@@ -105,6 +97,7 @@ async function createTable({ businessId, label }) {
       label: table.label,
       status: table.status,
       ...tableTipPayload(table),
+      ...tableSplitPayload(table),
     };
   } catch (err) {
     if (err.code === 11000) {
@@ -115,6 +108,7 @@ async function createTable({ businessId, label }) {
 }
 
 async function listTables(businessId, query = {}) {
+  await ensureBusinessActive(businessId);
   const page = Number(query.page || 1);
   const limit = Number(query.limit || 50);
   const skip = (page - 1) * limit;
@@ -145,6 +139,7 @@ async function listTables(businessId, query = {}) {
     label: t.label,
     status: t.status,
     ...tableTipPayload(t),
+    ...tableSplitPayload(t),
     createdAt: t.createdAt,
     updatedAt: t.updatedAt,
   }));
@@ -161,6 +156,7 @@ async function listTables(businessId, query = {}) {
 }
 
 async function getTableByQrCode(businessId, qrCode) {
+  await ensureBusinessActive(businessId);
   const table = await Table.findOne({
     businessId,
     qrCode: String(qrCode).trim(),
@@ -175,6 +171,7 @@ async function getTableByQrCode(businessId, qrCode) {
     label: table.label,
     status: table.status,
     ...tableTipPayload(table),
+    ...tableSplitPayload(table),
   };
 }
 
@@ -187,6 +184,7 @@ async function getTableById(businessId, tableId) {
     label: table.label,
     status: table.status,
     ...tableTipPayload(table),
+    ...tableSplitPayload(table),
     createdAt: table.createdAt,
     updatedAt: table.updatedAt,
   };
@@ -200,6 +198,7 @@ function formatTableResponse(table) {
     label: table.label,
     status: table.status,
     ...tableTipPayload(table),
+    ...tableSplitPayload(table),
     createdAt: table.createdAt,
     updatedAt: table.updatedAt,
   };
@@ -207,8 +206,10 @@ function formatTableResponse(table) {
 
 async function updateTable(businessId, tableId, body = {}) {
   const table = await ensureTableInBusiness(businessId, tableId);
-  if (table.status === "CLOSED") {
-    throw appError("No se puede editar una mesa cerrada", 409, "TABLE_CLOSED");
+  await ensureTableOpen(table);
+
+  if (table.splitType && table.splitAppliedAt && (body.tipMode != null || body.tipValue != null)) {
+    throw appError("No se puede cambiar la propina con un split aplicado", 409, "SPLIT_APPLIED");
   }
 
   let changed = false;
@@ -265,8 +266,10 @@ async function deleteTable(businessId, tableId) {
 
 async function joinTable({ tableId, name, userId = null }) {
   const table = await ensureTable(tableId);
-  if (table.status === "CLOSED") {
-    throw appError("La mesa ya está cerrada", 409, "TABLE_CLOSED");
+  await ensureBusinessActive(table.businessId);
+  await ensureTableOpen(table);
+  if (table.splitType && table.splitAppliedAt) {
+    throw appError("No se puede unir a una mesa con split ya aplicado", 409, "SPLIT_APPLIED");
   }
 
   const participant = await Participant.create({
@@ -291,35 +294,19 @@ async function joinTable({ tableId, name, userId = null }) {
   };
 }
 
-async function getSummary(tableId) {
-  const table = await ensureTable(tableId);
-  const [participants, items, payments] = await Promise.all([
-    Participant.find({ tableId: table._id }),
-    Item.find({ tableId: table._id }).sort({ createdAt: 1 }),
-    Payment.find({ tableId: table._id }).sort({ createdAt: 1 }),
-  ]);
-
-  const participantsSummary = buildParticipantStats(participants, items, payments);
-  const subtotal = items.reduce((acc, it) => acc + (Number(it.amount) || 0), 0);
-  const tipAmount = computeTipAmount(table, subtotal);
-  const grandTotal = Number((subtotal + tipAmount).toFixed(2));
-  const totalPaid = payments.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
-  const remainingDebt = Number(Math.max(0, grandTotal - totalPaid).toFixed(2));
-  const unassignedItems = items.some((it) => !it.assignments || it.assignments.length === 0);
+function formatSummary(table, participants, items, payments) {
+  const participantBalances = computeParticipantBalances({ table, participants, items, payments });
+  const totals = buildSummaryTotals(table, items, payments, participantBalances);
 
   return {
     tableId: table._id.toString(),
     businessId: table.businessId.toString(),
     status: table.status,
     ...tableTipPayload(table),
-    subtotal: Number(subtotal.toFixed(2)),
-    tipAmount: Number(tipAmount.toFixed(2)),
-    grandTotal,
-    totalAmount: Number(subtotal.toFixed(2)),
-    totalPaid: Number(totalPaid.toFixed(2)),
-    remainingDebt,
-    unassignedItems,
-    participants: participantsSummary,
+    ...tableSplitPayload(table),
+    ...totals,
+    totalAmount: totals.subtotal,
+    participants: participantBalances,
     items: items.map((it) => ({
       id: it._id.toString(),
       title: it.title,
@@ -340,17 +327,83 @@ async function getSummary(tableId) {
   };
 }
 
+async function getSummary(tableId) {
+  const { table, participants, items, payments } = await loadTableContext(tableId);
+  return formatSummary(table, participants, items, payments);
+}
+
 async function getTableStatus(tableId) {
   const summary = await getSummary(tableId);
   return {
     tableId: summary.tableId,
     businessId: summary.businessId,
     status: summary.status,
+    splitType: summary.splitType,
     subtotal: summary.subtotal,
     tipAmount: summary.tipAmount,
     grandTotal: summary.grandTotal,
     remainingDebt: summary.remainingDebt,
   };
+}
+
+async function applyTableSplit(tableId, body) {
+  const { table, participants, items, payments } = await loadTableContext(tableId);
+  await ensureTableOpen(table);
+
+  if (payments.length > 0) {
+    throw appError("No se puede cambiar el split después de registrar pagos", 409, "PAYMENTS_EXIST");
+  }
+
+  const type = body.type;
+  if (!Object.values(SPLIT_TYPES).includes(type)) {
+    throw appError("Tipo de split inválido", 400, "VALIDATION");
+  }
+
+  const result = computeSplitAmounts(type, {
+    participants,
+    items,
+    table,
+    shares: body.shares,
+    amounts: body.amounts,
+  });
+
+  table.splitType = type;
+  table.splitConfig = result.splitConfig;
+  table.splitAppliedAt = new Date();
+  await table.save();
+
+  await Promise.all(
+    result.participants.map((p) =>
+      Participant.updateOne({ _id: p.participantId }, { amountDue: p.amountDue })
+    )
+  );
+
+  const updatedParticipants = await Participant.find({ tableId: table._id });
+  const summary = formatSummary(table, updatedParticipants, items, payments);
+
+  return {
+    ...summary,
+    warnings: result.warnings,
+  };
+}
+
+async function resetTableSplit(businessId, tableId) {
+  const table = await ensureTableInBusiness(businessId, tableId);
+  await ensureTableOpen(table);
+
+  const payments = await Payment.find({ tableId: table._id });
+  if (payments.length > 0) {
+    throw appError("No se puede resetear el split con pagos registrados", 409, "PAYMENTS_EXIST");
+  }
+
+  table.splitType = null;
+  table.splitConfig = null;
+  table.splitAppliedAt = null;
+  await table.save();
+
+  await Participant.updateMany({ tableId: table._id }, { amountDue: null });
+
+  return { tableId: table._id.toString(), splitReset: true };
 }
 
 async function closeTable(tableId) {
@@ -370,9 +423,21 @@ async function closeTable(tableId) {
   return { tableId: table._id.toString(), status: table.status };
 }
 
+async function closeTableIfFullyPaid(table) {
+  const summary = await getSummary(table._id.toString());
+  if (summary.remainingDebt === 0 && table.status !== "CLOSED") {
+    table.status = "CLOSED";
+    await table.save();
+    return true;
+  }
+  return false;
+}
+
 module.exports = {
   ensureTable,
+  ensureTableOpen,
   ensureTableInBusiness,
+  ensureSplitNotApplied,
   createTable,
   listTables,
   getTableByQrCode,
@@ -382,5 +447,10 @@ module.exports = {
   joinTable,
   getSummary,
   getTableStatus,
+  applyTableSplit,
+  resetTableSplit,
   closeTable,
+  closeTableIfFullyPaid,
+  loadTableContext,
+  formatSummary,
 };

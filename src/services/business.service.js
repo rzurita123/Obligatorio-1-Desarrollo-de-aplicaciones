@@ -18,6 +18,14 @@ async function ensureBusiness(businessId) {
   return business;
 }
 
+async function ensureBusinessActive(businessId) {
+  const business = await ensureBusiness(businessId);
+  if (!business.active) {
+    throw appError("Negocio inactivo", 403, "BUSINESS_INACTIVE");
+  }
+  return business;
+}
+
 async function createBusiness({ name, slug, address }) {
   const doc = await Business.create({
     name: String(name).trim(),
@@ -79,7 +87,7 @@ async function listBusinessesForUser(userId, role) {
   }
   if (role === USER_ROLES.EMPLOYEE) {
     const links = await StaffAssignment.find({ userId }).populate("businessId").lean();
-    const businesses = links.map((l) => l.businessId).filter(Boolean);
+    const businesses = links.map((l) => l.businessId).filter((b) => b && b.active);
     return businesses.map((d) => formatBusiness({ ...d, _id: d._id }));
   }
   if (role === USER_ROLES.CUSTOMER) {
@@ -124,11 +132,14 @@ async function userHasAccessToBusiness(userId, role, businessId) {
   if (role === USER_ROLES.ADMIN) return true;
   if (role !== USER_ROLES.EMPLOYEE) return false;
   if (!isValidObjectId(businessId)) return false;
+  const business = await Business.findById(businessId).select("active").lean();
+  if (!business || !business.active) return false;
   return StaffAssignment.exists({ userId, businessId });
 }
 
 module.exports = {
   ensureBusiness,
+  ensureBusinessActive,
   createBusiness,
   listBusinessesAdmin,
   getBusinessById,

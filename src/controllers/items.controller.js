@@ -10,7 +10,7 @@ async function postItem(req, res, next) {
   }
 }
 
-async function postAssignItem(req, res, next) {
+async function patchItem(req, res, next) {
   try {
     const assigned = await assignItem({
       itemId: req.params.id,
@@ -25,5 +25,5 @@ async function postAssignItem(req, res, next) {
 
 module.exports = {
   postItem,
-  postAssignItem,
+  patchItem,
 };

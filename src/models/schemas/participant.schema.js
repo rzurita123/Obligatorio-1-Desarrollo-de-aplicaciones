@@ -18,6 +18,7 @@ const participantSchema = new mongoose.Schema(
       default: null,
     },
     name: { type: String, required: true, trim: true },
+    amountDue: { type: Number, default: null, min: 0 },
   },
   { timestamps: true }
 );

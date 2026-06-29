@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { SPLIT_TYPE_VALUES } = require("../../constants/split-type.constant");
 
 /**
  * Mesa del restaurante. Pertenece a un `Business`.
@@ -30,6 +31,13 @@ const tableSchema = new mongoose.Schema(
       default: "none",
     },
     tipValue: { type: Number, default: 0, min: 0 },
+    splitType: {
+      type: String,
+      enum: SPLIT_TYPE_VALUES,
+      default: null,
+    },
+    splitConfig: { type: mongoose.Schema.Types.Mixed, default: null },
+    splitAppliedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

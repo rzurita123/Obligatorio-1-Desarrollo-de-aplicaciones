@@ -1,6 +1,6 @@
 const { Payment, Participant, Table } = require("../models");
 const { appError } = require("../utils/app-error.util");
-const { getSummary } = require("./table.service");
+const { getSummary, closeTableIfFullyPaid, ensureTableOpen } = require("./table.service");
 
 async function listPaymentsByTable(tableId, query = {}) {
   const page = Number(query.page || 1);
@@ -48,19 +48,6 @@ async function listPaymentsByTable(tableId, query = {}) {
 }
 
 async function createPayment({ tableId, participantId, amount, clientPaymentId }) {
-  const participant = await Participant.findById(participantId);
-  if (!participant || String(participant.tableId) !== String(tableId)) {
-    throw appError("Participante inválido para esa mesa", 403, "FORBIDDEN");
-  }
-
-  const table = await Table.findById(tableId);
-  if (!table) {
-    throw appError("Mesa no encontrada", 404, "NOT_FOUND");
-  }
-  if (table.status === "CLOSED") {
-    throw appError("La mesa está cerrada y no acepta pagos", 409, "TABLE_CLOSED");
-  }
-
   if (clientPaymentId) {
     const existing = await Payment.findOne({
       tableId,
@@ -82,12 +69,31 @@ async function createPayment({ tableId, participantId, amount, clientPaymentId }
     }
   }
 
+  const participant = await Participant.findById(participantId);
+  if (!participant || String(participant.tableId) !== String(tableId)) {
+    throw appError("Participante inválido para esa mesa", 403, "FORBIDDEN");
+  }
+
+  const table = await Table.findById(tableId);
+  if (!table) {
+    throw appError("Mesa no encontrada", 404, "NOT_FOUND");
+  }
+  await ensureTableOpen(table);
+
+  if (!table.splitType || !table.splitAppliedAt) {
+    throw appError("Debe aplicarse un split antes de pagar", 403, "SPLIT_NOT_APPLIED");
+  }
+
   const summary = await getSummary(tableId);
   const participantSummary = summary.participants.find(
     (p) => p.participantId === String(participantId)
   );
-  const currentDebt = participantSummary ? participantSummary.debt - participantSummary.paid : 0;
-  if (amount > currentDebt) {
+  if (!participantSummary) {
+    throw appError("Participante no encontrado en la mesa", 404, "NOT_FOUND");
+  }
+
+  const remaining = participantSummary.remaining;
+  if (amount > remaining) {
     throw appError("No se puede pagar más de lo adeudado", 400, "VALIDATION");
   }
 
@@ -99,11 +105,7 @@ async function createPayment({ tableId, participantId, amount, clientPaymentId }
     status: "COMPLETED",
   });
 
-  const updatedSummary = await getSummary(tableId);
-  if (updatedSummary.remainingDebt === 0 && table.status !== "CLOSED") {
-    table.status = "CLOSED";
-    await table.save();
-  }
+  await closeTableIfFullyPaid(table);
 
   return {
     payment: {

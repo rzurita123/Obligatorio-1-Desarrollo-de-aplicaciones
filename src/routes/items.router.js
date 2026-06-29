@@ -6,16 +6,15 @@ const {
   requireParticipant,
   requireBodyTableIdMatchesParticipant,
 } = require("../middlewares/participant.middleware");
-const { postItem, postAssignItem } = require("../controllers/items.controller");
+const { postItem, patchItem } = require("../controllers/items.controller");
 const {
   createItemSchema,
   itemIdParamSchema,
-  assignItemSchema,
+  patchItemSchema,
 } = require("./validations/items.validation");
 
 const router = express.Router();
 
-//Crear ítem: body debe incluir `tableId` alineado al token de participante.
 const createItemChain = [
   authenticate,
   requireParticipant,
@@ -23,13 +22,13 @@ const createItemChain = [
 ];
 
 router.post("/", ...createItemChain, payloadMiddleware(createItemSchema), postItem);
-router.post(
-  "/:id/assign",
+router.patch(
+  "/:id",
   paramsMiddleware(itemIdParamSchema),
   authenticate,
   requireParticipant,
-  payloadMiddleware(assignItemSchema),
-  postAssignItem
+  payloadMiddleware(patchItemSchema),
+  patchItem
 );
 
 module.exports = router;

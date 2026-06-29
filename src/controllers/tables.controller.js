@@ -8,11 +8,13 @@ const {
   joinTable,
   getSummary,
   getTableStatus,
+  applyTableSplit,
+  resetTableSplit,
   closeTable,
 } = require("../services/table.service");
 const { listItemsByTable, splitItemEvenAmong } = require("../services/item.service");
-const { computeTableSplit } = require("../services/split.service");
 const { listPaymentsByTable } = require("../services/payment.service");
+const { leaveTable, expelParticipant } = require("../services/participant.service");
 const { sendSuccess } = require("../utils/response.util");
 const { appError } = require("../utils/app-error.util");
 
@@ -73,7 +75,7 @@ async function deleteOneTable(req, res, next) {
   }
 }
 
-async function postJoinTable(req, res, next) {
+async function postTableParticipant(req, res, next) {
   try {
     const joined = await joinTable({
       tableId: req.params.id,
@@ -109,41 +111,26 @@ async function getTableSummary(req, res, next) {
   }
 }
 
-async function postTableSplit(req, res, next) {
+async function putTableSplit(req, res, next) {
   try {
-    const summary = await getSummary(req.params.id);
-    const participants = summary.participants;
-    if (!participants.length) {
-      throw appError("No hay participantes para dividir", 400, "VALIDATION");
-    }
-    const split = computeTableSplit(req.body.type, {
-      unassignedItems: summary.unassignedItems,
-      participants: participants.map((p) => ({
-        participantId: p.participantId,
-        name: p.name,
-        debt: p.debt,
-      })),
-      subtotal: summary.subtotal,
-      tipAmount: summary.tipAmount,
-      grandTotal: summary.grandTotal,
-    });
-    const { warnings, ...data } = split;
-    return sendSuccess(
-      res,
-      200,
-      {
-        tableId: summary.tableId,
-        businessId: summary.businessId,
-        ...data,
-      },
-      warnings.length ? { warnings } : undefined
-    );
+    const result = await applyTableSplit(req.params.id, req.body || {});
+    const { warnings, ...data } = result;
+    return sendSuccess(res, 200, data, warnings?.length ? { warnings } : undefined);
   } catch (err) {
     return next(err);
   }
 }
 
-async function postSplitItemEven(req, res, next) {
+async function postTableSplitReset(req, res, next) {
+  try {
+    const result = await resetTableSplit(req.businessId, req.params.id);
+    return sendSuccess(res, 200, result);
+  } catch (err) {
+    return next(err);
+  }
+}
+
+async function patchTableItemSplitEven(req, res, next) {
   try {
     const result = await splitItemEvenAmong({
       tableId: req.params.id,
@@ -179,10 +166,38 @@ async function getStatus(req, res, next) {
   }
 }
 
-async function postCloseTable(req, res, next) {
+async function patchTableStatus(req, res, next) {
   try {
+    if (req.body.status !== "CLOSED") {
+      throw appError("Solo se permite actualizar status a CLOSED", 400, "VALIDATION");
+    }
     const closed = await closeTable(req.params.id);
     return sendSuccess(res, 200, closed);
+  } catch (err) {
+    return next(err);
+  }
+}
+
+async function deleteParticipantMe(req, res, next) {
+  try {
+    const result = await leaveTable({
+      tableId: req.params.id,
+      participantId: req.auth.participantId,
+    });
+    return sendSuccess(res, 200, result);
+  } catch (err) {
+    return next(err);
+  }
+}
+
+async function deleteParticipantByStaff(req, res, next) {
+  try {
+    const result = await expelParticipant({
+      businessId: req.businessId,
+      tableId: req.params.id,
+      participantId: req.params.participantId,
+    });
+    return sendSuccess(res, 200, result);
   } catch (err) {
     return next(err);
   }
@@ -195,12 +210,15 @@ module.exports = {
   getOneTable,
   patchTable,
   deleteOneTable,
-  postJoinTable,
+  postTableParticipant,
   getTableItems,
   getTableSummary,
-  postTableSplit,
-  postSplitItemEven,
+  putTableSplit,
+  postTableSplitReset,
+  patchTableItemSplitEven,
   getTablePayments,
   getStatus,
-  postCloseTable,
+  patchTableStatus,
+  deleteParticipantMe,
+  deleteParticipantByStaff,
 };

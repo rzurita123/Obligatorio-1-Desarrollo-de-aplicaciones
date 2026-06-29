@@ -8,7 +8,6 @@ const {
   getAdminBusinesses,
   getAdminBusinessById,
   patchAdminBusiness,
-  deleteAdminBusiness,
   postAdminBusinessStaff,
   deleteAdminBusinessStaff,
 } = require("../controllers/admin-businesses.controller");
@@ -34,8 +33,6 @@ router.patch(
   payloadMiddleware(updateBusinessBodySchema),
   patchAdminBusiness
 );
-router.delete("/:businessId", ...adminChain, paramsMiddleware(adminBusinessIdParamSchema), deleteAdminBusiness);
-
 router.post(
   "/:businessId/staff",
   ...adminChain,

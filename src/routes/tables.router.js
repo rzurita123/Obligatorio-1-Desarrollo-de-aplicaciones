@@ -19,14 +19,17 @@ const {
   getOneTable,
   patchTable,
   deleteOneTable,
-  postJoinTable,
+  postTableParticipant,
   getTableItems,
   getTableSummary,
-  postTableSplit,
-  postSplitItemEven,
+  putTableSplit,
+  postTableSplitReset,
+  patchTableItemSplitEven,
   getTablePayments,
   getStatus,
-  postCloseTable,
+  patchTableStatus,
+  deleteParticipantMe,
+  deleteParticipantByStaff,
 } = require("../controllers/tables.controller");
 const {
   createTableSchema,
@@ -38,9 +41,11 @@ const {
   joinTableSchema,
   splitTableSchema,
   splitItemEvenBodySchema,
+  patchTableStatusSchema,
   listItemsQuerySchema,
   listPaymentsQuerySchema,
   qrCodeParamSchema,
+  participantIdParamSchema,
 } = require("./validations/tables.validation");
 
 const router = express.Router();
@@ -79,18 +84,18 @@ router.patch("/:id", ...staffForTableById, payloadMiddleware(updateTableSchema),
 router.delete("/:id", ...staffForTableById, deleteOneTable);
 
 router.post(
-  "/:id/join",
+  "/:id/participants",
   paramsMiddleware(tableIdParamSchema),
   optionalAuthenticate,
   payloadMiddleware(joinTableSchema),
-  postJoinTable
+  postTableParticipant
 );
 
-router.post(
-  "/:id/items/:itemId/split-even",
+router.patch(
+  "/:id/items/:itemId",
   ...staffForTableItem,
   payloadMiddleware(splitItemEvenBodySchema),
-  postSplitItemEven
+  patchTableItemSplitEven
 );
 
 router.get(
@@ -101,13 +106,16 @@ router.get(
   getTableItems
 );
 router.get("/:id/summary", paramsMiddleware(tableIdParamSchema), ...participantForTable, getTableSummary);
-router.post(
+
+router.put(
   "/:id/split",
   paramsMiddleware(tableIdParamSchema),
   ...participantForTable,
   payloadMiddleware(splitTableSchema),
-  postTableSplit
+  putTableSplit
 );
+router.post("/:id/split/reset", ...staffForTableById, postTableSplitReset);
+
 router.get(
   "/:id/payments",
   paramsMiddleware(tableIdParamSchema),
@@ -116,6 +124,25 @@ router.get(
   getTablePayments
 );
 router.get("/:id/status", paramsMiddleware(tableIdParamSchema), ...participantForTable, getStatus);
-router.post("/:id/close", paramsMiddleware(tableIdParamSchema), ...participantForTable, postCloseTable);
+router.patch(
+  "/:id/status",
+  paramsMiddleware(tableIdParamSchema),
+  ...participantForTable,
+  payloadMiddleware(patchTableStatusSchema),
+  patchTableStatus
+);
+
+router.delete(
+  "/:id/participants/me",
+  paramsMiddleware(tableIdParamSchema),
+  ...participantForTable,
+  deleteParticipantMe
+);
+router.delete(
+  "/:id/participants/:participantId",
+  ...staffForTableById,
+  paramsMiddleware(participantIdParamSchema),
+  deleteParticipantByStaff
+);
 
 module.exports = router;
