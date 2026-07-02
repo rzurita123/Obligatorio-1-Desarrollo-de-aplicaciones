@@ -27,6 +27,7 @@ const {
   updatePaymentMethodSchema,
   paymentMethodIdParamSchema,
   myStatsQuerySchema,
+  myActiveTableQuerySchema,
 } = require("./validations/me.validation");
 
 const router = express.Router();
@@ -35,7 +36,7 @@ router.use(authenticate, requirePlatformUser);
 
 router.get("/profile", getMyProfile);
 router.patch("/profile/avatar", payloadMiddleware(updateMyAvatarSchema), patchMyAvatar);
-router.get("/active-table", getMyActiveTable);
+router.get("/active-table", queryMiddleware(myActiveTableQuerySchema), getMyActiveTable);
 
 router.get("/payments/history", queryMiddleware(myPaymentsHistoryQuerySchema), getMyPaymentsHistory);
 router.get("/benefits", getMyBenefits);

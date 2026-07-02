@@ -50,6 +50,10 @@ const myStatsQuerySchema = Joi.object({
   rangeDays: Joi.number().integer().valid(7, 30, 90, 180, 365).default(30),
 });
 
+const myActiveTableQuerySchema = Joi.object({
+  businessId: objectIdSchema.optional(),
+});
+
 const updateMyAvatarSchema = Joi.object({
   avatarDataUrl: Joi.string().trim().max(3000000).allow(null).required(),
 });
@@ -62,5 +66,6 @@ module.exports = {
   updatePaymentMethodSchema,
   paymentMethodIdParamSchema,
   myStatsQuerySchema,
+  myActiveTableQuerySchema,
   updateMyAvatarSchema,
 };

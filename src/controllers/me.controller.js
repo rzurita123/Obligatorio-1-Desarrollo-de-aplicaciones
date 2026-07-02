@@ -123,7 +123,7 @@ async function patchMyAvatar(req, res, next) {
 
 async function getMyActiveTable(req, res, next) {
   try {
-    const activeTable = await getMyActiveTableService(req.auth.userId);
+    const activeTable = await getMyActiveTableService(req.auth, req.query);
     return sendSuccess(res, 200, { activeTable });
   } catch (err) {
     return next(err);

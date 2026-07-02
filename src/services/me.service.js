@@ -1,7 +1,9 @@
 const mongoose = require("mongoose");
-const { Participant, Payment, Table, Business, User } = require("../models");
+const { Participant, Payment, Table, Business, User, StaffAssignment } = require("../models");
 const { appError } = require("../utils/app-error.util");
 const { signParticipantToken } = require("../utils/jwt.util");
+const { userHasAccessToBusiness } = require("./business.service");
+const { USER_ROLES } = require("../constants/user-role.constant");
 
 function asObjectId(value, fieldName) {
   if (!mongoose.Types.ObjectId.isValid(String(value))) {
@@ -264,7 +266,7 @@ async function updateMyAvatar(userId, avatarDataUrl) {
   };
 }
 
-async function getMyActiveTable(userId) {
+async function getMyActiveTableAsParticipant(userId) {
   const [entry] = await Participant.aggregate([
     { $match: { userId: asObjectId(userId, "userId") } },
     { $sort: { updatedAt: -1 } },
@@ -302,6 +304,7 @@ async function getMyActiveTable(userId) {
   const participantToken = signParticipantToken({ participant: participantRef, tableId: entry.table._id });
 
   return {
+    mode: "participant",
     participant: {
       id: entry._id.toString(),
       name: entry.name,
@@ -317,6 +320,111 @@ async function getMyActiveTable(userId) {
       businessName: entry.business?.name || null,
     },
   };
+}
+
+async function resolveStaffBusinessFilter(userId, role, businessId) {
+  if (businessId != null && businessId !== "") {
+    const normalizedBusinessId = String(businessId);
+    if (!mongoose.Types.ObjectId.isValid(normalizedBusinessId)) {
+      throw appError("businessId inválido", 400, "VALIDATION");
+    }
+
+    if (role === USER_ROLES.EMPLOYEE) {
+      const hasAccess = await userHasAccessToBusiness(String(userId), role, normalizedBusinessId);
+      if (!hasAccess) {
+        throw appError("Sin acceso a este negocio", 403, "FORBIDDEN");
+      }
+    }
+
+    return [new mongoose.Types.ObjectId(normalizedBusinessId)];
+  }
+
+  if (role === USER_ROLES.ADMIN) {
+    return null;
+  }
+
+  if (role === USER_ROLES.EMPLOYEE) {
+    const links = await StaffAssignment.find({ userId: asObjectId(userId, "userId") })
+      .select("businessId")
+      .lean();
+
+    if (!links.length) {
+      return [];
+    }
+
+    return links
+      .map((link) => link.businessId)
+      .filter(Boolean)
+      .map((id) => new mongoose.Types.ObjectId(String(id)));
+  }
+
+  return [];
+}
+
+async function getMyActiveTableAsStaff({ userId, role, businessId }) {
+  const businessFilter = await resolveStaffBusinessFilter(userId, role, businessId);
+  if (Array.isArray(businessFilter) && businessFilter.length === 0) {
+    return null;
+  }
+
+  const tableMatch = { status: "OPEN" };
+  if (Array.isArray(businessFilter)) {
+    tableMatch.businessId = { $in: businessFilter };
+  }
+
+  const [entry] = await Table.aggregate([
+    { $match: tableMatch },
+    {
+      $lookup: {
+        from: "businesses",
+        localField: "businessId",
+        foreignField: "_id",
+        as: "business",
+      },
+    },
+    { $unwind: "$business" },
+    { $match: { "business.active": true } },
+    { $sort: { updatedAt: -1 } },
+    { $limit: 1 },
+  ]);
+
+  if (!entry) {
+    return null;
+  }
+
+  return {
+    mode: "staff",
+    table: {
+      id: entry._id.toString(),
+      label: entry.label,
+      status: entry.status,
+      qrCode: entry.qrCode,
+      businessId: entry.businessId ? entry.businessId.toString() : null,
+      businessName: entry.business?.name || null,
+    },
+  };
+}
+
+async function getMyActiveTable(authContext, query = {}) {
+  if (!authContext || authContext.type !== "user" || !authContext.userId) {
+    throw appError("Se requiere usuario autenticado", 403, "FORBIDDEN");
+  }
+
+  const role = authContext.role || USER_ROLES.CUSTOMER;
+
+  if (role === USER_ROLES.CUSTOMER) {
+    return getMyActiveTableAsParticipant(authContext.userId);
+  }
+
+  if (role === USER_ROLES.ADMIN || role === USER_ROLES.EMPLOYEE) {
+    return getMyActiveTableAsStaff({
+      userId: authContext.userId,
+      role,
+      businessId: query.businessId,
+    });
+  }
+
+  return null;
 }
 
 module.exports = {
