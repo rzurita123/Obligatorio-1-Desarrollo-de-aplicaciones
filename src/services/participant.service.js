@@ -4,7 +4,6 @@ const { appError } = require("../utils/app-error.util");
 const {
   ensureTable,
   ensureTableInBusiness,
-  ensureTableOpen,
   loadTableContext,
 } = require("./table.service");
 const { computeParticipantBalances } = require("./participant-balance.service");
@@ -43,7 +42,6 @@ async function removeParticipantFromTable({ tableId, participantId }) {
   }
 
   const table = await ensureTable(tableId);
-  await ensureTableOpen(table);
 
   const participant = await Participant.findOne({ _id: participantId, tableId: table._id });
   if (!participant) {
