@@ -6,7 +6,7 @@ const {
   requireParticipant,
   requireBodyTableIdMatchesParticipant,
 } = require("../middlewares/participant.middleware");
-const { postItem, patchItem } = require("../controllers/items.controller");
+const { postItem, patchItem, deleteOneItem } = require("../controllers/items.controller");
 const {
   createItemSchema,
   itemIdParamSchema,
@@ -29,6 +29,13 @@ router.patch(
   requireParticipant,
   payloadMiddleware(patchItemSchema),
   patchItem
+);
+router.delete(
+  "/:id",
+  paramsMiddleware(itemIdParamSchema),
+  authenticate,
+  requireParticipant,
+  deleteOneItem
 );
 
 module.exports = router;

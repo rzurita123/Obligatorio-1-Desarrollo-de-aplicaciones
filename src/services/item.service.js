@@ -71,6 +71,24 @@ async function assignItem({ itemId, participantTableId, assignments }) {
   };
 }
 
+async function deleteItem({ itemId, participantTableId }) {
+  const item = await Item.findById(itemId);
+  if (!item) {
+    throw appError("Ítem no encontrado", 404, "NOT_FOUND");
+  }
+  if (String(item.tableId) !== String(participantTableId)) {
+    throw appError("El ítem no pertenece a la mesa del token", 403, "FORBIDDEN");
+  }
+
+  const table = await ensureTable(item.tableId.toString());
+  await ensureTableOpen(table);
+  ensureSplitNotApplied(table);
+
+  await Item.deleteOne({ _id: item._id });
+
+  return { id: item._id.toString() };
+}
+
 function splitAmountsEven(total, count) {
   const cents = Math.round(Number(total) * 100);
   const base = Math.floor(cents / count);
@@ -171,6 +189,7 @@ async function listItemsByTable(tableId, query = {}) {
 module.exports = {
   createItem,
   assignItem,
+  deleteItem,
   splitItemEvenAmong,
   listItemsByTable,
 };

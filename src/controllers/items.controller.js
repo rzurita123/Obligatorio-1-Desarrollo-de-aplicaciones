@@ -1,4 +1,4 @@
-const { createItem, assignItem } = require("../services/item.service");
+const { createItem, assignItem, deleteItem } = require("../services/item.service");
 const { sendSuccess } = require("../utils/response.util");
 
 async function postItem(req, res, next) {
@@ -23,7 +23,20 @@ async function patchItem(req, res, next) {
   }
 }
 
+async function deleteOneItem(req, res, next) {
+  try {
+    const deleted = await deleteItem({
+      itemId: req.params.id,
+      participantTableId: req.auth.tableId,
+    });
+    return sendSuccess(res, 200, deleted);
+  } catch (err) {
+    return next(err);
+  }
+}
+
 module.exports = {
   postItem,
   patchItem,
+  deleteOneItem,
 };
