@@ -7,6 +7,9 @@ require("./table.model");
 require("./participant.model");
 require("./item.model");
 require("./payment.model");
+require("./loyalty-account.model");
+require("./loyalty-ledger.model");
+require("./payment-method.model");
 
 module.exports = {
   User: require("./user.model"),
@@ -16,4 +19,7 @@ module.exports = {
   Participant: require("./participant.model"),
   Item: require("./item.model"),
   Payment: require("./payment.model"),
+  LoyaltyAccount: require("./loyalty-account.model"),
+  LoyaltyLedger: require("./loyalty-ledger.model"),
+  PaymentMethod: require("./payment-method.model"),
 };

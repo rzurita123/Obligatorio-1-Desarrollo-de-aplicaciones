@@ -6,6 +6,7 @@ const businessesRouter = require("./businesses.router");
 const tablesRouter = require("./tables.router");
 const itemsRouter = require("./items.router");
 const paymentsRouter = require("./payments.router");
+const meRouter = require("./me.router");
 const { sendSuccess } = require("../utils/response.util");
 
 function mountRoutes(app) {
@@ -23,6 +24,7 @@ function mountRoutes(app) {
   app.use("/tables", tablesRouter);
   app.use("/items", itemsRouter);
   app.use("/payments", paymentsRouter);
+  app.use("/me", meRouter);
 }
 
 module.exports = { mountRoutes };

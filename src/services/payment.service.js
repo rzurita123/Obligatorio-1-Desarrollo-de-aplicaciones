@@ -1,6 +1,7 @@
 const { Payment, Participant, Table } = require("../models");
 const { appError } = require("../utils/app-error.util");
 const { getSummary, closeTableIfFullyPaid, ensureTableOpen } = require("./table.service");
+const { accruePointsFromPayment } = require("./loyalty.service");
 
 async function listPaymentsByTable(tableId, query = {}) {
   const page = Number(query.page || 1);
@@ -104,6 +105,14 @@ async function createPayment({ tableId, participantId, amount, clientPaymentId }
     clientPaymentId: clientPaymentId ? String(clientPaymentId).trim() : undefined,
     status: "COMPLETED",
   });
+
+  if (participant.userId) {
+    await accruePointsFromPayment({
+      userId: participant.userId.toString(),
+      paymentId: payment._id.toString(),
+      amount: payment.amount,
+    });
+  }
 
   await closeTableIfFullyPaid(table);
 
