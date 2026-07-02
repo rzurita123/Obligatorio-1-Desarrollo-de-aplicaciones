@@ -1,5 +1,8 @@
 const mongoose = require("mongoose");
+const fs = require("fs");
+const path = require("path");
 const QRCode = require("qrcode");
+const sharp = require("sharp");
 const { Table, Participant, Item, Payment } = require("../models");
 const { signParticipantToken } = require("../utils/jwt.util");
 const { appError } = require("../utils/app-error.util");
@@ -7,6 +10,62 @@ const { computeSplitAmounts } = require("./split.service");
 const { computeParticipantBalances, buildSummaryTotals } = require("./participant-balance.service");
 const { ensureBusinessActive } = require("./business.service");
 const { SPLIT_TYPES } = require("../constants/split-type.constant");
+
+const MESA_PAY_QR_OPTIONS = {
+  type: "png",
+  errorCorrectionLevel: "H",
+  margin: 2,
+  width: 768,
+  color: {
+    dark: "#006D5B",
+    light: "#FFFFFF",
+  },
+};
+
+const MESA_PAY_LOGO_PATH = path.resolve(__dirname, "../../assets/logo-mesapay-transparente.png");
+
+function bufferToDataUrl(buffer, mimeType = "image/png") {
+  return `data:${mimeType};base64,${buffer.toString("base64")}`;
+}
+
+async function composeMesaPayQrWithLogo(qrPngBuffer) {
+  if (!fs.existsSync(MESA_PAY_LOGO_PATH)) {
+    return qrPngBuffer;
+  }
+
+  const qrMeta = await sharp(qrPngBuffer).metadata();
+  const qrSize = Math.min(qrMeta.width || 768, qrMeta.height || 768);
+
+  const logoTargetSize = Math.floor(qrSize * 0.2);
+  const logoPad = Math.floor(logoTargetSize * 0.25);
+  const logoContainerSize = logoTargetSize + logoPad * 2;
+  const logoX = Math.floor((qrSize - logoContainerSize) / 2);
+  const logoY = Math.floor((qrSize - logoContainerSize) / 2);
+
+  const logoBuffer = await sharp(MESA_PAY_LOGO_PATH)
+    .resize(logoTargetSize, logoTargetSize, { fit: "contain" })
+    .png()
+    .toBuffer();
+
+  const logoBackdrop = await sharp({
+    create: {
+      width: logoContainerSize,
+      height: logoContainerSize,
+      channels: 4,
+      background: "#FFFFFF",
+    },
+  })
+    .png()
+    .toBuffer();
+
+  return sharp(qrPngBuffer)
+    .composite([
+      { input: logoBackdrop, left: logoX, top: logoY },
+      { input: logoBuffer, left: logoX + logoPad, top: logoY + logoPad },
+    ])
+    .png()
+    .toBuffer();
+}
 
 function isValidObjectId(id) {
   return mongoose.Types.ObjectId.isValid(id);
@@ -201,16 +260,9 @@ async function getTableById(businessId, tableId) {
 async function getTableQrImage(businessId, tableId) {
   const table = await ensureTableInBusiness(businessId, tableId);
   const payload = buildTableQrPayload(table);
-
-  const qrImageDataUrl = await QRCode.toDataURL(payload, {
-    errorCorrectionLevel: "Q",
-    margin: 1,
-    width: 768,
-    color: {
-      dark: "#0f5132",
-      light: "#ffffff",
-    },
-  });
+  const baseQrPngBuffer = await QRCode.toBuffer(payload, MESA_PAY_QR_OPTIONS);
+  const qrPngBuffer = await composeMesaPayQrWithLogo(baseQrPngBuffer);
+  const qrImageDataUrl = bufferToDataUrl(qrPngBuffer);
 
   return {
     tableId: table._id.toString(),
@@ -222,17 +274,8 @@ async function getTableQrImage(businessId, tableId) {
 async function getTableQrPngBuffer(businessId, tableId) {
   const table = await ensureTableInBusiness(businessId, tableId);
   const payload = buildTableQrPayload(table);
-
-  const qrPngBuffer = await QRCode.toBuffer(payload, {
-    type: "png",
-    errorCorrectionLevel: "Q",
-    margin: 1,
-    width: 768,
-    color: {
-      dark: "#0f5132",
-      light: "#ffffff",
-    },
-  });
+  const baseQrPngBuffer = await QRCode.toBuffer(payload, MESA_PAY_QR_OPTIONS);
+  const qrPngBuffer = await composeMesaPayQrWithLogo(baseQrPngBuffer);
 
   return {
     tableId: table._id.toString(),
