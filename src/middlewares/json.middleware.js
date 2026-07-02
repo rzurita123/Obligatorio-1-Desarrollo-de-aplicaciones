@@ -2,6 +2,7 @@
 
 const express = require("express");
 
-const limit = process.env.JSON_BODY_LIMIT || "100kb";
+// Se aumenta limite a 6mb para aceptar fotos de perfil
+const limit = process.env.JSON_BODY_LIMIT || "6mb";
 
 module.exports = express.json({ limit });
