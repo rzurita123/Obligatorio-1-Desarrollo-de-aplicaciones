@@ -10,6 +10,7 @@ require("./payment.model");
 require("./loyalty-account.model");
 require("./loyalty-ledger.model");
 require("./payment-method.model");
+require("./business-interest.model");
 
 module.exports = {
   User: require("./user.model"),
@@ -22,4 +23,5 @@ module.exports = {
   LoyaltyAccount: require("./loyalty-account.model"),
   LoyaltyLedger: require("./loyalty-ledger.model"),
   PaymentMethod: require("./payment-method.model"),
+  BusinessInterest: require("./business-interest.model"),
 };

@@ -7,6 +7,7 @@ const {
   createUser,
   comparePassword,
 } = require("../services/user.service");
+const { createBusinessInterest } = require("../services/business-interest.service");
 
 const postAuthSignup = async (req, res, next) => {
   try {
@@ -66,7 +67,17 @@ const postAuthLogin = async (req, res, next) => {
   }
 };
 
+const postBusinessInterest = async (req, res, next) => {
+  try {
+    const interest = await createBusinessInterest(req.body || {});
+    return sendSuccess(res, 201, { interest });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   postAuthSignup,
   postAuthLogin,
+  postBusinessInterest,
 };
