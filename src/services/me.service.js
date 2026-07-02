@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const { Participant, Payment, Table, Business } = require("../models");
+const { Participant, Payment, Table, Business, User } = require("../models");
 const { appError } = require("../utils/app-error.util");
 
 function asObjectId(value, fieldName) {
@@ -232,7 +232,40 @@ async function getMyStats(userId, query = {}) {
   };
 }
 
+async function getMyProfile(userId) {
+  const user = await User.findById(String(userId)).select("_id name username email avatarDataUrl").lean();
+  if (!user) {
+    throw appError("Usuario no encontrado", 404, "NOT_FOUND");
+  }
+
+  return {
+    id: user._id.toString(),
+    name: user.name,
+    username: user.username,
+    email: user.email || null,
+    avatarDataUrl: user.avatarDataUrl || null,
+  };
+}
+
+async function updateMyAvatar(userId, avatarDataUrl) {
+  const user = await User.findById(String(userId));
+  if (!user) {
+    throw appError("Usuario no encontrado", 404, "NOT_FOUND");
+  }
+
+  user.avatarDataUrl = avatarDataUrl || null;
+  await user.save();
+
+  return {
+    id: user._id.toString(),
+    avatarDataUrl: user.avatarDataUrl || null,
+    updatedAt: user.updatedAt,
+  };
+}
+
 module.exports = {
   listMyPaymentHistory,
   getMyStats,
+  getMyProfile,
+  updateMyAvatar,
 };

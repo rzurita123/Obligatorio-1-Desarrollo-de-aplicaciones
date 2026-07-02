@@ -11,6 +11,7 @@ const userSchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true },
     username: { type: String, required: true, unique: true, trim: true },
     email: { type: String, trim: true, sparse: true, unique: true },
+    avatarDataUrl: { type: String, default: null },
     password: { type: String, required: true },
     active: { type: Boolean, default: true },
     role: {

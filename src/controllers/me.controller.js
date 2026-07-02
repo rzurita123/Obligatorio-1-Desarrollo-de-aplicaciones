@@ -1,5 +1,10 @@
 const { sendSuccess } = require("../utils/response.util");
-const { listMyPaymentHistory, getMyStats: getMyStatsService } = require("../services/me.service");
+const {
+  listMyPaymentHistory,
+  getMyStats: getMyStatsService,
+  getMyProfile: getMyProfileService,
+  updateMyAvatar: updateMyAvatarService,
+} = require("../services/me.service");
 const {
   getBenefitsSnapshot,
   listLoyaltyMovements,
@@ -97,6 +102,24 @@ async function getMyStats(req, res, next) {
   }
 }
 
+async function getMyProfile(req, res, next) {
+  try {
+    const profile = await getMyProfileService(req.auth.userId);
+    return sendSuccess(res, 200, profile);
+  } catch (err) {
+    return next(err);
+  }
+}
+
+async function patchMyAvatar(req, res, next) {
+  try {
+    const result = await updateMyAvatarService(req.auth.userId, req.body.avatarDataUrl);
+    return sendSuccess(res, 200, result);
+  } catch (err) {
+    return next(err);
+  }
+}
+
 module.exports = {
   getMyPaymentsHistory,
   getMyBenefits,
@@ -107,4 +130,6 @@ module.exports = {
   patchMyPaymentMethod,
   deleteMyPaymentMethod,
   getMyStats,
+  getMyProfile,
+  patchMyAvatar,
 };

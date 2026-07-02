@@ -6,17 +6,20 @@ const queryMiddleware = require("../middlewares/query.middleware");
 const paramsMiddleware = require("../middlewares/params.middleware");
 const {
   getMyPaymentsHistory,
+  getMyProfile,
   getMyBenefits,
   getMyBenefitMovements,
   postRedeemMyPoints,
   getMyPaymentMethods,
   postMyPaymentMethod,
   patchMyPaymentMethod,
+  patchMyAvatar,
   deleteMyPaymentMethod,
   getMyStats,
 } = require("../controllers/me.controller");
 const {
   myPaymentsHistoryQuerySchema,
+  updateMyAvatarSchema,
   myBenefitMovementsQuerySchema,
   redeemPointsSchema,
   createPaymentMethodSchema,
@@ -28,6 +31,9 @@ const {
 const router = express.Router();
 
 router.use(authenticate, requirePlatformUser);
+
+router.get("/profile", getMyProfile);
+router.patch("/profile/avatar", payloadMiddleware(updateMyAvatarSchema), patchMyAvatar);
 
 router.get("/payments/history", queryMiddleware(myPaymentsHistoryQuerySchema), getMyPaymentsHistory);
 router.get("/benefits", getMyBenefits);
