@@ -18,7 +18,7 @@ const MESA_PAY_QR_OPTIONS = {
   width: 768,
   color: {
     dark: "#006D5B",
-    light: "#FFFFFF",
+    light: "#6c6e6e",
   },
 };
 
@@ -52,7 +52,7 @@ async function composeMesaPayQrWithLogo(qrPngBuffer) {
       width: logoContainerSize,
       height: logoContainerSize,
       channels: 4,
-      background: "#FFFFFF",
+      background: "#0B4F45",
     },
   })
     .png()
