@@ -36,14 +36,18 @@ async function composeMesaPayQrWithLogo(qrPngBuffer) {
   const qrMeta = await sharp(qrPngBuffer).metadata();
   const qrSize = Math.min(qrMeta.width || 768, qrMeta.height || 768);
 
-  const logoTargetSize = Math.floor(qrSize * 0.2);
-  const logoPad = Math.floor(logoTargetSize * 0.25);
-  const logoContainerSize = logoTargetSize + logoPad * 2;
+  const logoContainerSize = Math.floor(qrSize * 0.26);
+  const logoPad = Math.floor(logoContainerSize * 0.1);
+  const logoTargetSize = logoContainerSize - logoPad * 2;
   const logoX = Math.floor((qrSize - logoContainerSize) / 2);
   const logoY = Math.floor((qrSize - logoContainerSize) / 2);
 
   const logoBuffer = await sharp(MESA_PAY_LOGO_PATH)
-    .resize(logoTargetSize, logoTargetSize, { fit: "contain" })
+    .trim()
+    .resize(logoTargetSize, logoTargetSize, {
+      fit: "contain",
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    })
     .png()
     .toBuffer();
 
@@ -52,7 +56,7 @@ async function composeMesaPayQrWithLogo(qrPngBuffer) {
       width: logoContainerSize,
       height: logoContainerSize,
       channels: 4,
-      background: "#0B4F45",
+      background: "#000000",
     },
   })
     .png()
