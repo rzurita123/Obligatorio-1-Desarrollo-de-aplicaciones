@@ -366,9 +366,6 @@ async function joinTable({ tableId, name, userId = null }) {
   const table = await ensureTable(tableId);
   await ensureBusinessActive(table.businessId);
   await ensureTableOpen(table);
-  if (table.splitType && table.splitAppliedAt) {
-    throw appError("No se puede unir a una mesa con split ya aplicado", 409, "SPLIT_APPLIED");
-  }
 
   const participant = await Participant.create({
     tableId: table._id,
