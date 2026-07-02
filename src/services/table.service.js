@@ -18,7 +18,7 @@ const MESA_PAY_QR_OPTIONS = {
   width: 768,
   color: {
     dark: "#006D5B",
-    light: "#6c6e6e",
+    light: "#EAF7F3",
   },
 };
 
