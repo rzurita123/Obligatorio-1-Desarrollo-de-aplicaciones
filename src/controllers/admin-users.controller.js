@@ -1,5 +1,18 @@
-const { createUserByAdmin, updateUserRole } = require("../services/admin-user.service");
+const {
+  createUserByAdmin,
+  updateUserRole,
+  listEmployeesByAdmin,
+} = require("../services/admin-user.service");
 const { sendSuccess } = require("../utils/response.util");
+
+async function getAdminUsers(req, res, next) {
+  try {
+    const users = await listEmployeesByAdmin();
+    return sendSuccess(res, 200, { users });
+  } catch (err) {
+    next(err);
+  }
+}
 
 async function postAdminUser(req, res, next) {
   try {
@@ -24,6 +37,7 @@ async function patchAdminUser(req, res, next) {
 }
 
 module.exports = {
+  getAdminUsers,
   postAdminUser,
   patchAdminUser,
 };

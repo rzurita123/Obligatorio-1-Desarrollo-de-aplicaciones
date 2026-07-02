@@ -1,5 +1,5 @@
 const bcrypt = require("bcryptjs");
-const User = require("../models/user.model");
+const { User, StaffAssignment } = require("../models");
 const { USER_ROLES } = require("../constants/user-role.constant");
 const { appError } = require("../utils/app-error.util");
 
@@ -74,7 +74,56 @@ async function updateUserRole(userId, role, requestingUserId) {
   };
 }
 
+async function listEmployeesByAdmin() {
+  const employees = await User.find({ role: USER_ROLES.EMPLOYEE })
+    .select("_id name username email active role")
+    .sort({ createdAt: -1 })
+    .lean();
+
+  if (!employees.length) {
+    return [];
+  }
+
+  const employeeIds = employees.map((employee) => employee._id);
+
+  const assignments = await StaffAssignment.find({ userId: { $in: employeeIds } })
+    .populate("businessId", "name slug")
+    .lean();
+
+  const businessesByUserId = new Map();
+
+  assignments.forEach((assignment) => {
+    const userId = String(assignment.userId);
+    const business = assignment.businessId;
+
+    if (!business || !business._id) {
+      return;
+    }
+
+    if (!businessesByUserId.has(userId)) {
+      businessesByUserId.set(userId, []);
+    }
+
+    businessesByUserId.get(userId).push({
+      id: business._id.toString(),
+      name: business.name,
+      slug: business.slug,
+    });
+  });
+
+  return employees.map((employee) => ({
+    id: employee._id.toString(),
+    name: employee.name,
+    username: employee.username,
+    email: employee.email || null,
+    role: employee.role,
+    active: employee.active,
+    businesses: businessesByUserId.get(employee._id.toString()) || [],
+  }));
+}
+
 module.exports = {
   createUserByAdmin,
   updateUserRole,
+  listEmployeesByAdmin,
 };
