@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const { Participant, Payment, Table, Business, User } = require("../models");
 const { appError } = require("../utils/app-error.util");
+const { signParticipantToken } = require("../utils/jwt.util");
 
 function asObjectId(value, fieldName) {
   if (!mongoose.Types.ObjectId.isValid(String(value))) {
@@ -263,9 +264,65 @@ async function updateMyAvatar(userId, avatarDataUrl) {
   };
 }
 
+async function getMyActiveTable(userId) {
+  const [entry] = await Participant.aggregate([
+    { $match: { userId: asObjectId(userId, "userId") } },
+    { $sort: { updatedAt: -1 } },
+    {
+      $lookup: {
+        from: "tables",
+        localField: "tableId",
+        foreignField: "_id",
+        as: "table",
+      },
+    },
+    { $unwind: "$table" },
+    { $match: { "table.status": "OPEN" } },
+    {
+      $lookup: {
+        from: "businesses",
+        localField: "table.businessId",
+        foreignField: "_id",
+        as: "business",
+      },
+    },
+    { $unwind: { path: "$business", preserveNullAndEmptyArrays: true } },
+    { $limit: 1 },
+  ]);
+
+  if (!entry) {
+    return null;
+  }
+
+  const participantRef = {
+    _id: entry._id,
+    userId: entry.userId || null,
+  };
+
+  const participantToken = signParticipantToken({ participant: participantRef, tableId: entry.table._id });
+
+  return {
+    participant: {
+      id: entry._id.toString(),
+      name: entry.name,
+    },
+    token: participantToken,
+    tokenType: "participant",
+    table: {
+      id: entry.table._id.toString(),
+      label: entry.table.label,
+      status: entry.table.status,
+      qrCode: entry.table.qrCode,
+      businessId: entry.table.businessId ? entry.table.businessId.toString() : null,
+      businessName: entry.business?.name || null,
+    },
+  };
+}
+
 module.exports = {
   listMyPaymentHistory,
   getMyStats,
   getMyProfile,
   updateMyAvatar,
+  getMyActiveTable,
 };

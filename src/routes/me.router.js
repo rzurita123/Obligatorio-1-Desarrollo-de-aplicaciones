@@ -14,6 +14,7 @@ const {
   postMyPaymentMethod,
   patchMyPaymentMethod,
   patchMyAvatar,
+  getMyActiveTable,
   deleteMyPaymentMethod,
   getMyStats,
 } = require("../controllers/me.controller");
@@ -34,6 +35,7 @@ router.use(authenticate, requirePlatformUser);
 
 router.get("/profile", getMyProfile);
 router.patch("/profile/avatar", payloadMiddleware(updateMyAvatarSchema), patchMyAvatar);
+router.get("/active-table", getMyActiveTable);
 
 router.get("/payments/history", queryMiddleware(myPaymentsHistoryQuerySchema), getMyPaymentsHistory);
 router.get("/benefits", getMyBenefits);

@@ -4,6 +4,7 @@ const {
   getMyStats: getMyStatsService,
   getMyProfile: getMyProfileService,
   updateMyAvatar: updateMyAvatarService,
+  getMyActiveTable: getMyActiveTableService,
 } = require("../services/me.service");
 const {
   getBenefitsSnapshot,
@@ -120,6 +121,15 @@ async function patchMyAvatar(req, res, next) {
   }
 }
 
+async function getMyActiveTable(req, res, next) {
+  try {
+    const activeTable = await getMyActiveTableService(req.auth.userId);
+    return sendSuccess(res, 200, { activeTable });
+  } catch (err) {
+    return next(err);
+  }
+}
+
 module.exports = {
   getMyPaymentsHistory,
   getMyBenefits,
@@ -132,4 +142,5 @@ module.exports = {
   getMyStats,
   getMyProfile,
   patchMyAvatar,
+  getMyActiveTable,
 };
