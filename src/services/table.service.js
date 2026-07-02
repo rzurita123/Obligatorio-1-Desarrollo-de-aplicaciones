@@ -386,6 +386,8 @@ async function joinTable({ tableId, name, userId = null }) {
     userId: participant.userId ? participant.userId.toString() : null,
     table: {
       id: table._id.toString(),
+      label: table.label,
+      qrCode: table.qrCode,
       businessId: table.businessId.toString(),
       status: table.status,
     },
@@ -398,6 +400,7 @@ function formatSummary(table, participants, items, payments) {
 
   return {
     tableId: table._id.toString(),
+    tableLabel: table.label,
     businessId: table.businessId.toString(),
     status: table.status,
     ...tableTipPayload(table),
