@@ -4,7 +4,7 @@ const { SPLIT_TYPE_VALUES } = require("../../constants/split-type.constant");
 const objectIdSchema = Joi.string().trim().length(24).hex();
 
 const createTableSchema = Joi.object({
-  businessId: objectIdSchema.required(),
+  businessId: objectIdSchema.optional(),
   label: Joi.string().trim().min(1).max(80).required(),
 });
 
@@ -19,7 +19,7 @@ const updateTableSchema = Joi.object({
   });
 
 const listTablesQuerySchema = Joi.object({
-  businessId: objectIdSchema.required(),
+  businessId: objectIdSchema.optional(),
   id: objectIdSchema.optional(),
   qrCode: Joi.string().trim().min(3).max(120).optional(),
   label: Joi.string().trim().min(1).max(80).optional(),

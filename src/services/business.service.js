@@ -108,6 +108,12 @@ async function assignStaffToBusiness({ businessId, userId }) {
   if (user.role !== USER_ROLES.EMPLOYEE) {
     throw appError("Solo se pueden asignar usuarios con rol employee", 400, "VALIDATION");
   }
+
+  const existingAssignment = await StaffAssignment.findOne({ userId: user._id }).lean();
+  if (existingAssignment && String(existingAssignment.businessId) !== String(businessId)) {
+    throw appError("Un employee solo puede estar asociado a un negocio", 409, "EMPLOYEE_ALREADY_ASSIGNED");
+  }
+
   try {
     await StaffAssignment.create({ userId: user._id, businessId });
   } catch (err) {

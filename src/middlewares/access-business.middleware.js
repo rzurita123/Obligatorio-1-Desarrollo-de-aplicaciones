@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const { USER_ROLES } = require("../constants/user-role.constant");
 const { userHasAccessToBusiness } = require("../services/business.service");
-const { Table } = require("../models");
+const { Table, StaffAssignment } = require("../models");
 
 function requirePlatformUser(req, res, next) {
   if (!req.auth || req.auth.type !== "user") {
@@ -51,13 +51,34 @@ async function requireAdminOrStaffOfBusiness(req, res, next) {
     err.code = "FORBIDDEN";
     return next(err);
   }
-  const businessId = resolveStaffBusinessId(req);
+  let businessId = resolveStaffBusinessId(req);
+
+  if (!businessId && req.auth.role === USER_ROLES.EMPLOYEE) {
+    const assignments = await StaffAssignment.find({ userId: req.auth.sub })
+      .select("businessId")
+      .limit(2)
+      .lean();
+
+    if (assignments.length > 1) {
+      const err = new Error("El empleado tiene múltiples negocios asignados; debe tener solo uno");
+      err.status = 409;
+      err.code = "EMPLOYEE_MULTIPLE_BUSINESSES";
+      return next(err);
+    }
+
+    if (assignments.length === 1) {
+      businessId = String(assignments[0].businessId);
+    }
+  }
+
   if (!businessId) {
     const err = new Error(
-      "businessId inválido o faltante (query en listado, body al crear, o inferido desde la mesa por id)"
+      req.auth.role === USER_ROLES.EMPLOYEE
+        ? "El empleado no tiene negocio asignado y no puede operar mesas"
+        : "businessId inválido o faltante (query en listado, body al crear, o inferido desde la mesa por id)"
     );
     err.status = 400;
-    err.code = "VALIDATION";
+    err.code = req.auth.role === USER_ROLES.EMPLOYEE ? "EMPLOYEE_WITHOUT_BUSINESS" : "VALIDATION";
     return next(err);
   }
   try {
