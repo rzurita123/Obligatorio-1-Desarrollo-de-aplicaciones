@@ -4,6 +4,7 @@ const {
   getTableByQrCode,
   getTableById,
   getTableQrImage,
+  getTableQrPngBuffer,
   updateTable,
   deleteTable,
   joinTable,
@@ -62,6 +63,17 @@ async function getOneTableQrImage(req, res, next) {
   try {
     const payload = await getTableQrImage(req.businessId, req.params.id);
     return sendSuccess(res, 200, payload);
+  } catch (err) {
+    return next(err);
+  }
+}
+
+async function getOneTableQrPng(req, res, next) {
+  try {
+    const payload = await getTableQrPngBuffer(req.businessId, req.params.id);
+    res.setHeader("Content-Type", "image/png");
+    res.setHeader("Cache-Control", "private, max-age=60");
+    return res.status(200).send(payload.qrPngBuffer);
   } catch (err) {
     return next(err);
   }
@@ -219,6 +231,7 @@ module.exports = {
   getTableByQr,
   getOneTable,
   getOneTableQrImage,
+  getOneTableQrPng,
   patchTable,
   deleteOneTable,
   postTableParticipant,

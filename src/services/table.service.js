@@ -219,6 +219,28 @@ async function getTableQrImage(businessId, tableId) {
   };
 }
 
+async function getTableQrPngBuffer(businessId, tableId) {
+  const table = await ensureTableInBusiness(businessId, tableId);
+  const payload = buildTableQrPayload(table);
+
+  const qrPngBuffer = await QRCode.toBuffer(payload, {
+    type: "png",
+    errorCorrectionLevel: "Q",
+    margin: 1,
+    width: 768,
+    color: {
+      dark: "#0f5132",
+      light: "#ffffff",
+    },
+  });
+
+  return {
+    tableId: table._id.toString(),
+    qrCode: table.qrCode,
+    qrPngBuffer,
+  };
+}
+
 function formatTableResponse(table) {
   return {
     id: table._id.toString(),
@@ -472,6 +494,7 @@ module.exports = {
   getTableByQrCode,
   getTableById,
   getTableQrImage,
+  getTableQrPngBuffer,
   updateTable,
   deleteTable,
   joinTable,
