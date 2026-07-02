@@ -3,6 +3,7 @@ const {
   listTables,
   getTableByQrCode,
   getTableById,
+  getTableQrImage,
   updateTable,
   deleteTable,
   joinTable,
@@ -52,6 +53,15 @@ async function getOneTable(req, res, next) {
   try {
     const table = await getTableById(req.businessId, req.params.id);
     return sendSuccess(res, 200, table);
+  } catch (err) {
+    return next(err);
+  }
+}
+
+async function getOneTableQrImage(req, res, next) {
+  try {
+    const payload = await getTableQrImage(req.businessId, req.params.id);
+    return sendSuccess(res, 200, payload);
   } catch (err) {
     return next(err);
   }
@@ -208,6 +218,7 @@ module.exports = {
   getTablesList,
   getTableByQr,
   getOneTable,
+  getOneTableQrImage,
   patchTable,
   deleteOneTable,
   postTableParticipant,

@@ -7,7 +7,11 @@
     "dev": "nodemon api/dev.js",
     "start": "node api/dev.js"
   },
-  "keywords": ["express", "mongodb", "mesapay"],
+  "keywords": [
+    "express",
+    "mongodb",
+    "mesapay"
+  ],
   "license": "ISC",
   "dependencies": {
     "bcryptjs": "^3.0.2",
@@ -17,7 +21,8 @@
     "joi": "^17.13.3",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.13.2",
-    "morgan": "^1.10.0"
+    "morgan": "^1.10.0",
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
     "nodemon": "^3.1.9"

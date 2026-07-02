@@ -17,6 +17,7 @@ const {
   getTablesList,
   getTableByQr,
   getOneTable,
+  getOneTableQrImage,
   patchTable,
   deleteOneTable,
   postTableParticipant,
@@ -80,6 +81,7 @@ router.get("/", ...staffForList, getTablesList);
 router.post("/", ...staffForCreate, postTable);
 
 router.get("/:id", ...staffForTableById, getOneTable);
+router.get("/:id/qr-image", ...staffForTableById, getOneTableQrImage);
 router.patch("/:id", ...staffForTableById, payloadMiddleware(updateTableSchema), patchTable);
 router.delete("/:id", ...staffForTableById, deleteOneTable);
 

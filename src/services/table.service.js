@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const QRCode = require("qrcode");
 const { Table, Participant, Item, Payment } = require("../models");
 const { signParticipantToken } = require("../utils/jwt.util");
 const { appError } = require("../utils/app-error.util");
@@ -13,6 +14,13 @@ function isValidObjectId(id) {
 
 function randomQrCode() {
   return `QR-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+}
+
+function buildTableQrPayload(table) {
+  return JSON.stringify({
+    tableId: table._id.toString(),
+    qrCode: table.qrCode,
+  });
 }
 
 function tableTipPayload(table) {
@@ -187,6 +195,27 @@ async function getTableById(businessId, tableId) {
     ...tableSplitPayload(table),
     createdAt: table.createdAt,
     updatedAt: table.updatedAt,
+  };
+}
+
+async function getTableQrImage(businessId, tableId) {
+  const table = await ensureTableInBusiness(businessId, tableId);
+  const payload = buildTableQrPayload(table);
+
+  const qrImageDataUrl = await QRCode.toDataURL(payload, {
+    errorCorrectionLevel: "Q",
+    margin: 1,
+    width: 768,
+    color: {
+      dark: "#0f5132",
+      light: "#ffffff",
+    },
+  });
+
+  return {
+    tableId: table._id.toString(),
+    qrCode: table.qrCode,
+    qrImageDataUrl,
   };
 }
 
@@ -442,6 +471,7 @@ module.exports = {
   listTables,
   getTableByQrCode,
   getTableById,
+  getTableQrImage,
   updateTable,
   deleteTable,
   joinTable,
